@@ -4,7 +4,7 @@ import sys
 import random
 
 # define constants used throughout the program
-FRAMES_PER_SECOND = 15
+FPS = 15
 WIDTH = 1000
 HEIGHT = 500
 
@@ -142,10 +142,10 @@ direction = -1
 food = Food(generate_food_position(), (BOX_SIZE, BOX_SIZE))
 
 done = False
-condition = "playing"
+state = "playing"
 while not done:
     # tells PyGame how often to update
-    clock.tick(FRAMES_PER_SECOND)
+    clock.tick(FPS)
 
     # update the score
     pygame.display.set_caption(GAME_TITLE + "| Score:%d" % (food.get_score()))
@@ -156,7 +156,7 @@ while not done:
             done = True
     
     # draw everything
-    if condition == "playing":
+    if state == "playing":
         # get key presses
         keys = pygame.key.get_pressed()
         if keys[pygame.K_RIGHT] and direction != LEFT: direction = RIGHT
@@ -186,9 +186,9 @@ while not done:
         # subtract increment because coordinates are calculated from top left
         outside_boundaries = body_list[-1].rect.x > WIDTH-INCREMENT or body_list[-1].rect.x < 0 or body_list[-1].rect.y > HEIGHT-INCREMENT or body_list[-1].rect.y < 0
         if len(body_collisions) == 2 or outside_boundaries:
-            condition = "lost"
+            state = "lost"
         
-    elif condition == "lost":
+    elif state == "lost":
         # Display message to user, notifying them of their loss
         font = pygame.font.Font(pygame.font.get_default_font(), 30)
         text = font.render("You lost. Score: %d.Press spacebar to play again..." % (food.score), True, BLACK)
@@ -196,7 +196,7 @@ while not done:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
             # reset the game
-            condition = "playing"
+            state = "playing"
             body_list = []
             for i in range(3):
                 pos = (0, i*INCREMENT)
