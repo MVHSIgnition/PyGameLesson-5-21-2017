@@ -1,30 +1,28 @@
 import pygame
-import math
-import sys
 import random
-
-# define constants used throughout the program
-FPS = 15
-WIDTH = 1000
-HEIGHT = 500
-
-WHITE = (255,   255,    255)
-BLACK = (0,     0,      0)
-GREEN = (40,    255,    40)
-RED =   (255,    40,    40)
-
-INCREMENT = 25
-UNIT_SIZE = 20
-GROW_LENGTH = 1
-RIGHT, UP, LEFT, DOWN = range(4)
-#START_POSITION = (0, 0)
 
 # start pygame up
 pygame.init()
 
+# some constants
+WIDTH = 1000
+HEIGHT = 500
+GAME_TITLE = "Snake Game"
+FPS = 15
+
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+
+INCREMENT = 25
+UNIT_SIZE = 20
+GROW_LENGTH = 1
+
+RIGHT, UP, LEFT, DOWN = range(4)
+
+# sprites
 class Unit(pygame.sprite.Sprite):
-    # base class for the snake body and food boxes
-    def __init__(self, color, position, dimensions, direction=-1):
+    def __init__(self, color, position, dimensions):
         pygame.sprite.Sprite.__init__(self)
 
         # set the image of the sprite
@@ -37,33 +35,17 @@ class Unit(pygame.sprite.Sprite):
         self.rect.y = position[1]
 
     def draw(self, screen):
+        # displays image to the screen
         screen.blit(self.image, self.rect)
 
 class SnakeUnit(Unit):
     # class for the boxes in the snake body
-    head = pygame.image.load('head.png')
-    tail = pygame.image.load('tail.png')
     def __init__(self, position, dimensions, direction=-1):
-        Unit.__init__(self, GREEN, position, dimensions)
+        Unit.__init__(self, GREEN, position, dimensions) #defaults color to GREEN
 
-        # define variables used by this sprite
-        self.color = GREEN
+        # self.dir stores the direction the unit is facing
+        # can be used to replace boxes with images in the future
         self.dir = direction
-        self.dimensions = dimensions
-
-    def update(self, body_list):
-        index = body_list.index(self) #find which index this unit is
-
-        if index == len(body_list)-1:
-            # set image to head
-            self.image = pygame.transform.rotate(self.head, self.dir*90)
-        elif index == 0:
-            # set image to tail
-            self.image = pygame.transform.rotate(self.tail, self.dir*90)
-        else:
-            # body unit
-            self.image = pygame.Surface(self.dimensions)
-            self.image.fill(self.color)
 
 class Food(Unit):
     # class for the food box
@@ -94,6 +76,14 @@ class Food(Unit):
     def get_grow(self):
         return self.grow
 
+def generate_food_position():
+    # generate a random location for the food
+    x_max = int(WIDTH/INCREMENT) - 1
+    x = random.randint(0, x_max)*INCREMENT
+    y_max = int(HEIGHT/INCREMENT) - 1
+    y = random.randint(0, y_max)*INCREMENT
+    return (x, y)
+
 def update_direction(direction):
     # get x and y position of the "head" unit
     x = body_list[-1].rect.x
@@ -107,55 +97,43 @@ def update_direction(direction):
     elif direction == -1: return
 
     # add a new unit to the front of snake
-    rect = SnakeUnit((x, y), (UNIT_SIZE, UNIT_SIZE), direction = direction)
+    rect = SnakeUnit( (x, y), (UNIT_SIZE, UNIT_SIZE), direction )
     body_list.append(rect)
     body_group.add(rect)
 
-    # ...and get rid of the last unit if snake doesn't need to grow
+    # get rid of the last unit if snake doesn't need to grow
     if food.get_grow() == 0:
         body_group.remove(body_list.pop(0))
-    
-def generate_food_position():
-    # generate a random location for the food
-    x_max = int(WIDTH/INCREMENT) - 1
-    x = random.randint(0, x_max)*INCREMENT
-    y_max = int(HEIGHT/INCREMENT) - 1
-    y = random.randint(0, y_max)*INCREMENT
-    return (x, y)
 
-# create window WIDTH x HEIGHT
+# create a game window
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-# set title of the window
-GAME_TITLE = "My Snake Game"
 pygame.display.set_caption(GAME_TITLE)
 
 # initialize internal clock (for calculating fps)
 clock = pygame.time.Clock()
 
-# initialize game
+# initialize list for body units
 body_list = []
-for i in range(3):
-    pos = (0, i*INCREMENT)
-    body_list.append(SnakeUnit(pos, (UNIT_SIZE, UNIT_SIZE)))
+body_list.append( SnakeUnit( (0,0), (UNIT_SIZE, UNIT_SIZE), -1 ) )
+# group body units into one big sprite
 body_group = pygame.sprite.Group(body_list)
+# set snake to not be moving in any direction to start
 direction = -1
-food = Food(generate_food_position(), (UNIT_SIZE, UNIT_SIZE))
+# create the first food box
+food = Food( generate_food_position(), (UNIT_SIZE, UNIT_SIZE) )
 
-done = False
+# main game loop
 state = "playing"
+done = False
 while not done:
     # tells PyGame how often to update
     clock.tick(FPS)
-
-    # update the score
-    pygame.display.set_caption(GAME_TITLE + "| Score:%d" % (food.get_score()))
 
     # if x button pressed, quit out of while loop
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             done = True
-    
-    # draw everything
+
     if state == "playing":
         # get key presses
         keys = pygame.key.get_pressed()
@@ -174,39 +152,12 @@ while not done:
         food_collisions = pygame.sprite.spritecollide(food, body_group, False)
         food.update(food_collisions)
 
-        # update the snake body
-        body_group.update(body_list)
-
         # draw the sprites
         body_group.draw(screen)
         food.draw(screen)
 
-        # check if snake is outside the boundaries or has hit itself
-        body_collisions = pygame.sprite.spritecollide(body_list[-1], body_group, False)
-        # subtract increment because coordinates are calculated from top left
-        outside_boundaries = body_list[-1].rect.x > WIDTH-INCREMENT or body_list[-1].rect.x < 0 or body_list[-1].rect.y > HEIGHT-INCREMENT or body_list[-1].rect.y < 0
-        if len(body_collisions) == 2 or outside_boundaries:
-            state = "lost"
-        
-    elif state == "lost":
-        # Display message to user, notifying them of their loss
-        font = pygame.font.Font(pygame.font.get_default_font(), 30)
-        text = font.render("You lost. Score: %d.Press spacebar to play again..." % (food.get_score()), True, BLACK)
-        screen.blit(text, (30, 30))
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE]:
-            # reset the game
-            state = "playing"
-            body_list = []
-            for i in range(3):
-                pos = (0, i*INCREMENT)
-                body_list.append(SnakeUnit(pos, (UNIT_SIZE, UNIT_SIZE)))
-            body_group = pygame.sprite.Group(body_list)
-            direction = -1
-            food = Food(generate_food_position(), (UNIT_SIZE, UNIT_SIZE))
-
-    # update the display
+    # update the screen!
     pygame.display.flip()
 
-# must have this to unload pygame, and exit the game
+# quit pygame
 pygame.quit()
